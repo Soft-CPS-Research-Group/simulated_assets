@@ -1,0 +1,316 @@
+{
+  "info": {
+    "name": "simulated_assets API",
+    "description": "Collection to test the simulated_assets MVP API (home_battery).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "6fd9ddf1-3a03-4ab9-b098-78a5c2725d2f"
+  },
+  "item": [
+    {
+      "name": "Apply Action - Charge",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"power_kw\": 2.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/actions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "actions"
+          ]
+        },
+        "description": "Apply positive setpoint (charging)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('Has action response fields', function () {",
+              "  pm.expect(body).to.have.property('requested_power_kw');",
+              "  pm.expect(body).to.have.property('applied_power_kw');",
+              "  pm.expect(body).to.have.property('was_saturated');",
+              "  pm.expect(body).to.have.property('saturation_reasons');",
+              "  pm.expect(body).to.have.property('soc_pct');",
+              "  pm.expect(body).to.have.property('stored_energy_kwh');",
+              "  pm.expect(body).to.have.property('timestamp');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Apply Action - Discharge",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"power_kw\": -1.5\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/actions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "actions"
+          ]
+        },
+        "description": "Apply negative setpoint (discharging)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Observation - Default Window",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/observations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "observations"
+          ]
+        },
+        "description": "Get observation using default configured window."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('Has observation response fields', function () {",
+              "  pm.expect(body).to.have.property('instantaneous_power_kw');",
+              "  pm.expect(body).to.have.property('mode');",
+              "  pm.expect(body).to.have.property('soc_pct');",
+              "  pm.expect(body).to.have.property('stored_energy_kwh');",
+              "  pm.expect(body).to.have.property('window_seconds_requested');",
+              "  pm.expect(body).to.have.property('window_seconds_effective');",
+              "  pm.expect(body).to.have.property('energy_charged_kwh_window');",
+              "  pm.expect(body).to.have.property('energy_discharged_kwh_window');",
+              "  pm.expect(body).to.have.property('net_energy_kwh_window');",
+              "  pm.expect(body).to.have.property('timestamp');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Observation - Custom Window",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/observations?window_seconds={{windowSeconds}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "observations"
+          ],
+          "query": [
+            {
+              "key": "window_seconds",
+              "value": "{{windowSeconds}}"
+            }
+          ]
+        },
+        "description": "Get observation for a custom window in seconds."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('window_seconds_requested equals requested variable', function () {",
+              "  pm.expect(body.window_seconds_requested).to.eql(Number(pm.variables.get('windowSeconds')));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Observation - Invalid Window (400)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/observations?window_seconds=999999",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "observations"
+          ],
+          "query": [
+            {
+              "key": "window_seconds",
+              "value": "999999"
+            }
+          ]
+        },
+        "description": "Expect 400 when window exceeds configured max."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Observation - Unknown Asset (404)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/unknown-asset/observations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "unknown-asset",
+            "observations"
+          ]
+        },
+        "description": "Expect 404 for missing asset_id."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', function () {",
+              "  pm.response.to.have.status(404);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Apply Action - Invalid Payload (422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"power\": 2.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/actions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "actions"
+          ]
+        },
+        "description": "Expect 422 if required field power_kw is missing."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 422', function () {",
+              "  pm.response.to.have.status(422);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "assetId",
+      "value": "home-battery-1",
+      "type": "string"
+    },
+    {
+      "key": "windowSeconds",
+      "value": "300",
+      "type": "string"
+    }
+  ]
+}

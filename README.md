@@ -1,2 +1,70 @@
 # simulated_assets
-Repo for simulating assets for real world deployments
+
+FastAPI service to simulate energy-community assets for real deployments.
+
+## MVP scope
+
+This repository currently implements one asset type: `home_battery`.
+
+Runtime API exposes exactly two endpoints per `asset_id`:
+
+- `POST /assets/{asset_id}/actions` to apply a power setpoint (`power_kw`)
+- `GET /assets/{asset_id}/observations` to read state and windowed energy metrics
+
+## Battery behavior
+
+- `power_kw > 0`: charging
+- `power_kw < 0`: discharging
+- `power_kw = 0`: idle
+- setpoint remains active until a new action arrives
+- state evolves event-by-event using server time
+- SOC is represented as percentage (`0..100`)
+- efficiency is one-way and applied symmetrically as specified in the plan
+
+## Configuration
+
+Assets are loaded on startup from `config/assets.json` by default.
+You can override the file path via:
+
+- `SIMULATED_ASSETS_CONFIG=/path/to/assets.json`
+
+Example config is provided in [config/assets.json](config/assets.json).
+
+### `BatteryConfig` fields
+
+- `asset_id`
+- `asset_type` (`home_battery`)
+- `capacity_kwh`
+- `initial_soc_pct`
+- `soc_min_pct`
+- `soc_max_pct`
+- `max_charge_power_kw`
+- `min_charge_power_kw`
+- `max_discharge_power_kw`
+- `min_discharge_power_kw`
+- `efficiency`
+- `default_observation_window_seconds`
+- `max_observation_window_seconds`
+
+## Run
+
+```bash
+python3 -m pip install -e .
+uvicorn simulated_assets.main:app --host 0.0.0.0 --port 8000
+```
+
+## Test
+
+```bash
+python3 -m pip install -e .[dev]
+pytest
+```
+
+## Postman
+
+Postman artifact is available in `postman/`:
+
+- `postman/simulated_assets.postman_collection.json`
+
+Import the collection and run it directly.  
+All required variables are already inside the collection (`baseUrl`, `assetId`, `windowSeconds`).
