@@ -309,7 +309,7 @@
     },
     {
       "key": "windowSeconds",
-      "value": "5",
+      "value": "300",
       "type": "string"
     }
   ]
