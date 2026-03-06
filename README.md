@@ -60,6 +60,18 @@ python3 -m pip install -e .[dev]
 pytest
 ```
 
+## CI/CD (GitHub Actions)
+
+Workflow file: `.github/workflows/ci-cd.yml`
+
+- Runs tests on every `push` and `pull_request`
+- Publishes Docker image `latest` on every `push` after tests pass
+
+Required repository secrets:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
 ## Postman
 
 Postman artifact is available in `postman/`:
