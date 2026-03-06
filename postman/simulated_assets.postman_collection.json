@@ -100,6 +100,97 @@
       ]
     },
     {
+      "name": "Reset SOC",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soc_pct\": {{resetSocPct}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/reset",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "reset"
+          ]
+        },
+        "description": "Reset battery state to a specific SOC percentage."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('Has reset response fields', function () {",
+              "  pm.expect(body).to.have.property('requested_soc_pct');",
+              "  pm.expect(body).to.have.property('soc_pct');",
+              "  pm.expect(body).to.have.property('stored_energy_kwh');",
+              "  pm.expect(body).to.have.property('applied_power_kw');",
+              "  pm.expect(body).to.have.property('timestamp');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reset SOC - Out of Allowed Range (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soc_pct\": 5.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{assetId}}/reset",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{assetId}}",
+            "reset"
+          ]
+        },
+        "description": "Expect 400 when requested SOC is outside configured [soc_min_pct, soc_max_pct]."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Get Observation - Default Window",
       "request": {
         "method": "GET",
@@ -310,6 +401,11 @@
     {
       "key": "windowSeconds",
       "value": "300",
+      "type": "string"
+    },
+    {
+      "key": "resetSocPct",
+      "value": "40",
       "type": "string"
     }
   ]

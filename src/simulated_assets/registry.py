@@ -4,7 +4,14 @@ from datetime import datetime
 from pathlib import Path
 
 from simulated_assets.config import BatteryConfig, load_battery_configs
-from simulated_assets.domain import ActionResult, ApplyPowerAction, AssetSimulator, ObservationResult
+from simulated_assets.domain import (
+    ActionResult,
+    ApplyPowerAction,
+    AssetSimulator,
+    ObservationResult,
+    ResetResult,
+    ResetSocAction,
+)
 from simulated_assets.errors import AssetNotFoundError
 from simulated_assets.simulators import BatterySimulator
 
@@ -59,3 +66,14 @@ class AssetRegistry:
         if simulator is None:
             raise AssetNotFoundError(asset_id)
         return simulator.get_observation(now=now, window_seconds=window_seconds)
+
+    def reset_soc(
+        self,
+        asset_id: str,
+        now: datetime,
+        action: ResetSocAction,
+    ) -> ResetResult:
+        simulator = self._simulators.get(asset_id)
+        if simulator is None:
+            raise AssetNotFoundError(asset_id)
+        return simulator.reset_soc(now=now, action=action)

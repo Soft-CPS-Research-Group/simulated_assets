@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from simulated_assets.config import BatteryConfig
-from simulated_assets.domain import ApplyPowerAction
-from simulated_assets.errors import InvalidWindowError
+from simulated_assets.domain import ApplyPowerAction, ResetSocAction
+from simulated_assets.errors import InvalidSocError, InvalidWindowError
 from simulated_assets.simulators import BatterySimulator
 
 
@@ -177,3 +177,37 @@ def test_invalid_window_raises_error() -> None:
 
     with pytest.raises(InvalidWindowError):
         simulator.get_observation(ts(start, 10), window_seconds=0)
+
+
+def test_reset_soc_sets_requested_state_and_clears_power_history() -> None:
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    simulator = BatterySimulator(make_config(), start_time=start)
+
+    simulator.apply_action(start, ApplyPowerAction(power_kw=2.0))
+    result = simulator.reset_soc(ts(start, 1800), ResetSocAction(soc_pct=30.0))
+
+    assert result.requested_soc_pct == pytest.approx(30.0)
+    assert result.soc_pct == pytest.approx(30.0)
+    assert result.stored_energy_kwh == pytest.approx(3.0)
+    assert result.applied_power_kw == pytest.approx(0.0)
+
+    observation = simulator.get_observation(ts(start, 1800), window_seconds=1800)
+    assert observation.soc_pct == pytest.approx(30.0)
+    assert observation.instantaneous_power_kw == pytest.approx(0.0)
+    assert observation.energy_charged_kwh_window == pytest.approx(0.0)
+    assert observation.energy_discharged_kwh_window == pytest.approx(0.0)
+    assert observation.window_seconds_effective == 0
+
+
+def test_reset_soc_rejects_outside_allowed_range() -> None:
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    simulator = BatterySimulator(
+        make_config(initial_soc_pct=50.0, soc_min_pct=10.0, soc_max_pct=90.0),
+        start_time=start,
+    )
+
+    with pytest.raises(InvalidSocError):
+        simulator.reset_soc(start, ResetSocAction(soc_pct=5.0))
+
+    with pytest.raises(InvalidSocError):
+        simulator.reset_soc(start, ResetSocAction(soc_pct=95.0))

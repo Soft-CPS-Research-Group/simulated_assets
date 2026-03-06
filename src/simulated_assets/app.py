@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from simulated_assets.domain import ApplyPowerAction
-from simulated_assets.errors import AssetNotFoundError, InvalidWindowError
+from simulated_assets.domain import ApplyPowerAction, ResetSocAction
+from simulated_assets.errors import AssetNotFoundError, InvalidSocError, InvalidWindowError
 from simulated_assets.registry import AssetRegistry
 
 Clock = Callable[[], datetime]
@@ -39,6 +39,18 @@ class ObservationResponse(BaseModel):
     energy_charged_kwh_window: float
     energy_discharged_kwh_window: float
     net_energy_kwh_window: float
+    timestamp: datetime
+
+
+class ResetSocRequest(BaseModel):
+    soc_pct: float = Field(ge=0, le=100)
+
+
+class ResetSocResponse(BaseModel):
+    requested_soc_pct: float
+    soc_pct: float
+    stored_energy_kwh: float
+    applied_power_kw: float
     timestamp: datetime
 
 
@@ -105,6 +117,27 @@ def create_app(
             energy_charged_kwh_window=result.energy_charged_kwh_window,
             energy_discharged_kwh_window=result.energy_discharged_kwh_window,
             net_energy_kwh_window=result.net_energy_kwh_window,
+            timestamp=result.timestamp,
+        )
+
+    @app.post("/assets/{asset_id}/reset", response_model=ResetSocResponse)
+    async def reset_soc(asset_id: str, request: ResetSocRequest) -> ResetSocResponse:
+        try:
+            result = registry.reset_soc(
+                asset_id=asset_id,
+                now=clock_fn(),
+                action=ResetSocAction(soc_pct=request.soc_pct),
+            )
+        except AssetNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except InvalidSocError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        return ResetSocResponse(
+            requested_soc_pct=result.requested_soc_pct,
+            soc_pct=result.soc_pct,
+            stored_energy_kwh=result.stored_energy_kwh,
+            applied_power_kw=result.applied_power_kw,
             timestamp=result.timestamp,
         )
 

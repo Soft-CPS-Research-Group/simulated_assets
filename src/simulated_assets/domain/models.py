@@ -11,6 +11,11 @@ class ApplyPowerAction:
 
 
 @dataclass(frozen=True)
+class ResetSocAction:
+    soc_pct: float
+
+
+@dataclass(frozen=True)
 class ActionResult:
     requested_power_kw: float
     applied_power_kw: float
@@ -35,6 +40,15 @@ class ObservationResult:
     timestamp: datetime
 
 
+@dataclass(frozen=True)
+class ResetResult:
+    requested_soc_pct: float
+    soc_pct: float
+    stored_energy_kwh: float
+    applied_power_kw: float
+    timestamp: datetime
+
+
 class AssetSimulator(ABC):
     @abstractmethod
     def apply_action(self, now: datetime, action: ApplyPowerAction) -> ActionResult:
@@ -47,3 +61,7 @@ class AssetSimulator(ABC):
         window_seconds: int | None,
     ) -> ObservationResult:
         """Return an observation snapshot for the requested window."""
+
+    @abstractmethod
+    def reset_soc(self, now: datetime, action: ResetSocAction) -> ResetResult:
+        """Reset asset state to a requested SOC and return updated snapshot."""

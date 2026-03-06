@@ -10,8 +10,10 @@ from simulated_assets.domain import (
     ApplyPowerAction,
     AssetSimulator,
     ObservationResult,
+    ResetResult,
+    ResetSocAction,
 )
-from simulated_assets.errors import InvalidWindowError
+from simulated_assets.errors import InvalidSocError, InvalidWindowError
 
 EPSILON = 1e-9
 
@@ -92,6 +94,36 @@ class BatterySimulator(AssetSimulator):
             energy_charged_kwh_window=charged_kwh,
             energy_discharged_kwh_window=discharged_kwh,
             net_energy_kwh_window=charged_kwh - discharged_kwh,
+            timestamp=now,
+        )
+
+    def reset_soc(self, now: datetime, action: ResetSocAction) -> ResetResult:
+        now = self._ensure_aware(now)
+        self._advance_to(now)
+
+        requested_soc_pct = action.soc_pct
+        if requested_soc_pct < self._config.soc_min_pct or requested_soc_pct > self._config.soc_max_pct:
+            raise InvalidSocError(
+                requested_soc_pct,
+                self._config.soc_min_pct,
+                self._config.soc_max_pct,
+            )
+
+        self._stored_energy_kwh = self._config.capacity_kwh * requested_soc_pct / 100.0
+        self._stored_energy_kwh = min(max(self._stored_energy_kwh, self._energy_min_kwh), self._energy_max_kwh)
+        self._update_soc_from_energy()
+
+        self._current_setpoint_kw = 0.0
+        self._current_applied_power_kw = 0.0
+        self._history.clear()
+        self._started_at = now
+        self._last_update_ts = now
+
+        return ResetResult(
+            requested_soc_pct=requested_soc_pct,
+            soc_pct=self._soc_pct,
+            stored_energy_kwh=self._stored_energy_kwh,
+            applied_power_kw=self._current_applied_power_kw,
             timestamp=now,
         )
 

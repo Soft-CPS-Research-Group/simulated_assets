@@ -3,6 +3,8 @@ from .models import (
     ApplyPowerAction,
     AssetSimulator,
     ObservationResult,
+    ResetResult,
+    ResetSocAction,
 )
 
 __all__ = [
@@ -10,4 +12,6 @@ __all__ = [
     "ApplyPowerAction",
     "AssetSimulator",
     "ObservationResult",
+    "ResetResult",
+    "ResetSocAction",
 ]

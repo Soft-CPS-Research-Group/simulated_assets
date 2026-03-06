@@ -45,7 +45,7 @@ def build_client() -> tuple[TestClient, ManualClock]:
     clock = ManualClock(start)
 
     configs = [
-        make_config("battery-a"),
+        make_config("battery-a", soc_min_pct=10.0, soc_max_pct=95.0),
         make_config("battery-b"),
     ]
 
@@ -118,3 +118,37 @@ def test_assets_are_isolated_by_asset_id() -> None:
 
     assert first_observation.json()["soc_pct"] == 70.0
     assert second_observation.json()["soc_pct"] == 50.0
+
+
+def test_reset_soc_endpoint_updates_soc_and_stops_power() -> None:
+    client, clock = build_client()
+
+    apply_response = client.post("/assets/battery-a/actions", json={"power_kw": 2.0})
+    assert apply_response.status_code == 200
+
+    clock.advance(1800)
+
+    reset_response = client.post("/assets/battery-a/reset", json={"soc_pct": 25.0})
+    assert reset_response.status_code == 200
+    payload = reset_response.json()
+    assert payload["requested_soc_pct"] == 25.0
+    assert payload["soc_pct"] == 25.0
+    assert payload["stored_energy_kwh"] == 2.5
+    assert payload["applied_power_kw"] == 0.0
+
+    observation = client.get("/assets/battery-a/observations", params={"window_seconds": 300})
+    assert observation.status_code == 200
+    obs_payload = observation.json()
+    assert obs_payload["soc_pct"] == 25.0
+    assert obs_payload["instantaneous_power_kw"] == 0.0
+    assert obs_payload["energy_charged_kwh_window"] == 0.0
+    assert obs_payload["energy_discharged_kwh_window"] == 0.0
+
+
+def test_reset_soc_returns_400_for_soc_outside_allowed_range() -> None:
+    client, _ = build_client()
+
+    response = client.post("/assets/battery-a/reset", json={"soc_pct": 5.0})
+
+    assert response.status_code == 400
+    assert "soc_pct must be in range" in response.json()["detail"]

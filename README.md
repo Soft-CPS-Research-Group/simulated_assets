@@ -6,10 +6,11 @@ FastAPI service to simulate energy-community assets for real deployments.
 
 This repository currently implements one asset type: `home_battery`.
 
-Runtime API exposes exactly two endpoints per `asset_id`:
+Runtime API exposes three endpoints per `asset_id`:
 
 - `POST /assets/{asset_id}/actions` to apply a power setpoint (`power_kw`)
 - `GET /assets/{asset_id}/observations` to read state and windowed energy metrics
+- `POST /assets/{asset_id}/reset` to reset battery SOC (`soc_pct`)
 
 ## Battery behavior
 
@@ -79,4 +80,4 @@ Postman artifact is available in `postman/`:
 - `postman/simulated_assets.postman_collection.json`
 
 Import the collection and run it directly.  
-All required variables are already inside the collection (`baseUrl`, `assetId`, `windowSeconds`).
+All required variables are already inside the collection (`baseUrl`, `assetId`, `windowSeconds`, `resetSocPct`).
