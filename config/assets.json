@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "asset_id": "home-battery-1",
+      "asset_id": "sao-mamede-battery",
       "asset_type": "home_battery",
       "capacity_kwh": 125.0,
       "initial_soc_pct": 50.0,
