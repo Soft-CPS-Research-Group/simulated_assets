@@ -51,8 +51,10 @@ Example config is provided in [config/assets.json](config/assets.json).
 
 ```bash
 python3 -m pip install -e .
-uvicorn simulated_assets.main:app --host 0.0.0.0 --port 8000
+uvicorn simulated_assets.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 30
 ```
+
+For pollers running at ~5s intervals, avoid using the default Uvicorn keep-alive timeout (`5s`), as it can intermittently close idle pooled connections right before the next request.
 
 ## Test
 
