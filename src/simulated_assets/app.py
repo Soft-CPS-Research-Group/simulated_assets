@@ -8,8 +8,13 @@ from typing import Callable
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from simulated_assets.domain import ApplyPowerAction, ResetSocAction
-from simulated_assets.errors import AssetNotFoundError, InvalidSocError, InvalidWindowError
+from simulated_assets.domain import ApplyPowerAction, GridMeterObservationResult, ResetSocAction
+from simulated_assets.errors import (
+    AssetNotFoundError,
+    InvalidSocError,
+    InvalidWindowError,
+    UnsupportedOperationError,
+)
 from simulated_assets.registry import AssetRegistry
 
 Clock = Callable[[], datetime]
@@ -40,6 +45,21 @@ class ObservationResponse(BaseModel):
     energy_discharged_kwh_window: float
     net_energy_kwh_window: float
     timestamp: datetime
+
+
+class GridMeterSampleResponse(BaseModel):
+    energy_in_total: float
+    energy_in_l1: float | None
+    energy_in_l2: float | None
+    energy_in_l3: float | None
+    energy_out_total: float
+    energy_out_l1: float | None
+    energy_out_l2: float | None
+    energy_out_l3: float | None
+
+
+class GridMeterObservationResponse(BaseModel):
+    GR01: GridMeterSampleResponse
 
 
 class ResetSocRequest(BaseModel):
@@ -80,6 +100,8 @@ def create_app(
             )
         except AssetNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except UnsupportedOperationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         return ApplyActionResponse(
             requested_power_kw=result.requested_power_kw,
@@ -91,11 +113,14 @@ def create_app(
             timestamp=result.timestamp,
         )
 
-    @app.get("/assets/{asset_id}/observations", response_model=ObservationResponse)
+    @app.get(
+        "/assets/{asset_id}/observations",
+        response_model=ObservationResponse | GridMeterObservationResponse,
+    )
     async def get_observation(
         asset_id: str,
         window_seconds: int | None = Query(default=None),
-    ) -> ObservationResponse:
+    ) -> ObservationResponse | GridMeterObservationResponse:
         try:
             result = registry.get_observation(
                 asset_id=asset_id,
@@ -106,6 +131,20 @@ def create_app(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except InvalidWindowError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        if isinstance(result, GridMeterObservationResult):
+            return GridMeterObservationResponse(
+                GR01=GridMeterSampleResponse(
+                    energy_in_total=result.energy_in_total,
+                    energy_in_l1=result.energy_in_l1,
+                    energy_in_l2=result.energy_in_l2,
+                    energy_in_l3=result.energy_in_l3,
+                    energy_out_total=result.energy_out_total,
+                    energy_out_l1=result.energy_out_l1,
+                    energy_out_l2=result.energy_out_l2,
+                    energy_out_l3=result.energy_out_l3,
+                )
+            )
 
         return ObservationResponse(
             instantaneous_power_kw=result.instantaneous_power_kw,
@@ -131,6 +170,8 @@ def create_app(
         except AssetNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except InvalidSocError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except UnsupportedOperationError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         return ResetSocResponse(

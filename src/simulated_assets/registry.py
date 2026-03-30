@@ -3,17 +3,18 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from simulated_assets.config import BatteryConfig, load_battery_configs
+from simulated_assets.config import AssetConfig, BatteryConfig, GridMeterConfig, load_asset_configs
 from simulated_assets.domain import (
     ActionResult,
     ApplyPowerAction,
     AssetSimulator,
+    GridMeterObservationResult,
     ObservationResult,
     ResetResult,
     ResetSocAction,
 )
 from simulated_assets.errors import AssetNotFoundError
-from simulated_assets.simulators import BatterySimulator
+from simulated_assets.simulators import BatterySimulator, GridMeterSimulator
 
 
 class AssetRegistry:
@@ -24,13 +25,13 @@ class AssetRegistry:
 
     @classmethod
     def from_config_file(cls, config_path: Path, start_time: datetime) -> "AssetRegistry":
-        configs = load_battery_configs(config_path)
+        configs = load_asset_configs(config_path)
         return cls.from_configs(configs, start_time=start_time)
 
     @classmethod
     def from_configs(
         cls,
-        configs: list[BatteryConfig],
+        configs: list[AssetConfig],
         start_time: datetime,
     ) -> "AssetRegistry":
         simulators: dict[str, AssetSimulator] = {}
@@ -38,10 +39,15 @@ class AssetRegistry:
             if config.asset_id in simulators:
                 raise ValueError(f"Duplicate asset_id found: {config.asset_id}")
 
-            if config.asset_type == "home_battery":
+            if isinstance(config, BatteryConfig):
                 simulators[config.asset_id] = BatterySimulator(config, start_time=start_time)
-            else:
-                raise ValueError(f"Unsupported asset_type: {config.asset_type}")
+                continue
+
+            if isinstance(config, GridMeterConfig):
+                simulators[config.asset_id] = GridMeterSimulator(config, start_time=start_time)
+                continue
+
+            raise ValueError(f"Unsupported asset config: {type(config).__name__}")
 
         return cls(simulators)
 
@@ -61,7 +67,7 @@ class AssetRegistry:
         asset_id: str,
         now: datetime,
         window_seconds: int | None,
-    ) -> ObservationResult:
+    ) -> ObservationResult | GridMeterObservationResult:
         simulator = self._simulators.get(asset_id)
         if simulator is None:
             raise AssetNotFoundError(asset_id)

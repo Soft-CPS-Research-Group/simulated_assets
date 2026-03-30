@@ -39,21 +39,57 @@ class BatteryConfig(BaseModel):
         return self
 
 
+class GridMeterConfig(BaseModel):
+    asset_id: str = Field(min_length=1)
+    asset_type: Literal["grid_meter"] = "grid_meter"
+    default_observation_window_seconds: int = Field(gt=0)
+    max_observation_window_seconds: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_ranges(self) -> "GridMeterConfig":
+        if self.default_observation_window_seconds > self.max_observation_window_seconds:
+            raise ValueError(
+                "default_observation_window_seconds must be <= max_observation_window_seconds"
+            )
+        return self
+
+
+AssetConfig = BatteryConfig | GridMeterConfig
+
+
 class AssetsFile(BaseModel):
-    assets: list[BatteryConfig]
+    assets: list[dict]
 
 
-def load_battery_configs(config_path: Path) -> list[BatteryConfig]:
+def _parse_asset_config(item: dict) -> AssetConfig:
+    asset_type = item.get("asset_type", "home_battery")
+    if asset_type == "home_battery":
+        return BatteryConfig.model_validate(item)
+    if asset_type == "grid_meter":
+        return GridMeterConfig.model_validate(item)
+    raise ValueError(f"Unsupported asset_type: {asset_type}")
+
+
+def load_asset_configs(config_path: Path) -> list[AssetConfig]:
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     raw = json.loads(config_path.read_text(encoding="utf-8"))
     if isinstance(raw, list):
-        configs = [BatteryConfig.model_validate(item) for item in raw]
+        configs = [_parse_asset_config(item) for item in raw]
     else:
-        configs = AssetsFile.model_validate(raw).assets
+        assets_file = AssetsFile.model_validate(raw)
+        configs = [_parse_asset_config(item) for item in assets_file.assets]
 
     if not configs:
         raise ValueError("At least one asset config is required")
 
     return configs
+
+
+def load_battery_configs(config_path: Path) -> list[BatteryConfig]:
+    configs = load_asset_configs(config_path)
+    batteries = [config for config in configs if isinstance(config, BatteryConfig)]
+    if not batteries:
+        raise ValueError("At least one battery asset config is required")
+    return batteries

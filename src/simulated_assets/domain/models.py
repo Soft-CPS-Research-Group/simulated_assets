@@ -41,6 +41,18 @@ class ObservationResult:
 
 
 @dataclass(frozen=True)
+class GridMeterObservationResult:
+    energy_in_total: float
+    energy_in_l1: float | None
+    energy_in_l2: float | None
+    energy_in_l3: float | None
+    energy_out_total: float
+    energy_out_l1: float | None
+    energy_out_l2: float | None
+    energy_out_l3: float | None
+
+
+@dataclass(frozen=True)
 class ResetResult:
     requested_soc_pct: float
     soc_pct: float
@@ -59,7 +71,7 @@ class AssetSimulator(ABC):
         self,
         now: datetime,
         window_seconds: int | None,
-    ) -> ObservationResult:
+    ) -> ObservationResult | GridMeterObservationResult:
         """Return an observation snapshot for the requested window."""
 
     @abstractmethod

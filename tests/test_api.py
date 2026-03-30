@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from simulated_assets.app import create_app
-from simulated_assets.config import BatteryConfig
+from simulated_assets.config import BatteryConfig, GridMeterConfig
 from simulated_assets.registry import AssetRegistry
 
 
@@ -47,6 +47,31 @@ def build_client() -> tuple[TestClient, ManualClock]:
     configs = [
         make_config("battery-a", soc_min_pct=10.0, soc_max_pct=95.0),
         make_config("battery-b"),
+    ]
+
+    registry = AssetRegistry.from_configs(configs, start_time=clock())
+    app = create_app(registry=registry, clock=clock)
+    return TestClient(app), clock
+
+
+def make_grid_config(asset_id: str, **overrides: float | int | str) -> GridMeterConfig:
+    data: dict[str, float | int | str] = {
+        "asset_id": asset_id,
+        "asset_type": "grid_meter",
+        "default_observation_window_seconds": 600,
+        "max_observation_window_seconds": 7200,
+    }
+    data.update(overrides)
+    return GridMeterConfig.model_validate(data)
+
+
+def build_grid_client() -> tuple[TestClient, ManualClock]:
+    start = datetime(2026, 1, 7, 9, 0, tzinfo=timezone.utc)
+    clock = ManualClock(start)
+
+    configs = [
+        make_config("battery-a", soc_min_pct=10.0, soc_max_pct=95.0),
+        make_grid_config("grid-a"),
     ]
 
     registry = AssetRegistry.from_configs(configs, start_time=clock())
@@ -152,3 +177,58 @@ def test_reset_soc_returns_400_for_soc_outside_allowed_range() -> None:
 
     assert response.status_code == 400
     assert "soc_pct must be in range" in response.json()["detail"]
+
+
+def test_grid_meter_observation_returns_sample_shape() -> None:
+    client, clock = build_grid_client()
+    clock.advance(600)
+
+    response = client.get("/assets/grid-a/observations", params={"window_seconds": 600})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload.keys()) == {"GR01"}
+    meter = payload["GR01"]
+    assert meter["energy_in_total"] > 0.0
+    assert meter["energy_in_l1"] is None
+    assert meter["energy_in_l2"] is None
+    assert meter["energy_in_l3"] is None
+    assert meter["energy_out_total"] == 0.0
+    assert meter["energy_out_l1"] is None
+    assert meter["energy_out_l2"] is None
+    assert meter["energy_out_l3"] is None
+
+
+def test_grid_meter_observation_uses_default_window_when_omitted() -> None:
+    client, clock = build_grid_client()
+    clock.advance(600)
+
+    default_response = client.get("/assets/grid-a/observations")
+    explicit_response = client.get("/assets/grid-a/observations", params={"window_seconds": 600})
+
+    assert default_response.status_code == 200
+    assert explicit_response.status_code == 200
+    default_energy = default_response.json()["GR01"]["energy_in_total"]
+    explicit_energy = explicit_response.json()["GR01"]["energy_in_total"]
+    assert default_energy == explicit_energy
+
+
+def test_grid_meter_observation_rejects_invalid_window() -> None:
+    client, _ = build_grid_client()
+
+    response = client.get("/assets/grid-a/observations", params={"window_seconds": 8000})
+
+    assert response.status_code == 400
+    assert "window_seconds" in response.json()["detail"]
+
+
+def test_grid_meter_rejects_actions_and_reset_operations() -> None:
+    client, _ = build_grid_client()
+
+    apply_response = client.post("/assets/grid-a/actions", json={"power_kw": 2.0})
+    reset_response = client.post("/assets/grid-a/reset", json={"soc_pct": 50.0})
+
+    assert apply_response.status_code == 400
+    assert reset_response.status_code == 400
+    assert "not supported" in apply_response.json()["detail"]
+    assert "not supported" in reset_response.json()["detail"]

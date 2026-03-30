@@ -4,13 +4,18 @@ FastAPI service to simulate energy-community assets for real deployments.
 
 ## MVP scope
 
-This repository currently implements one asset type: `home_battery`.
+This repository currently implements two asset types:
+
+- `home_battery`
+- `grid_meter` (read-only)
 
 Runtime API exposes three endpoints per `asset_id`:
 
 - `POST /assets/{asset_id}/actions` to apply a power setpoint (`power_kw`)
 - `GET /assets/{asset_id}/observations` to read state and windowed energy metrics
 - `POST /assets/{asset_id}/reset` to reset battery SOC (`soc_pct`)
+
+For `grid_meter`, only `GET /observations` is supported. `actions` and `reset` return `400`.
 
 ## Battery behavior
 
@@ -46,6 +51,30 @@ Example config is provided in [config/assets.json](config/assets.json).
 - `efficiency`
 - `default_observation_window_seconds`
 - `max_observation_window_seconds`
+
+### `GridMeterConfig` fields
+
+- `asset_id`
+- `asset_type` (`grid_meter`)
+- `default_observation_window_seconds`
+- `max_observation_window_seconds`
+
+Grid meter observations are returned in kWh using the sample shape:
+
+```json
+{
+  "GR01": {
+    "energy_in_total": 2.2,
+    "energy_in_l1": null,
+    "energy_in_l2": null,
+    "energy_in_l3": null,
+    "energy_out_total": 0.0,
+    "energy_out_l1": null,
+    "energy_out_l2": null,
+    "energy_out_l3": null
+  }
+}
+```
 
 ## Run
 

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "simulated_assets API",
-    "description": "Collection to test the simulated_assets MVP API (home_battery).",
+    "description": "Collection to test the simulated_assets API (home_battery and grid_meter).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "6fd9ddf1-3a03-4ab9-b098-78a5c2725d2f"
   },
@@ -385,6 +385,174 @@
           }
         }
       ]
+    },
+    {
+      "name": "Grid Meter - Get Observation - Default Window",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{gridAssetId}}/observations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{gridAssetId}}",
+            "observations"
+          ]
+        },
+        "description": "Get grid meter observation with default configured window."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('Has GR01 sample payload', function () {",
+              "  pm.expect(body).to.have.property('GR01');",
+              "  pm.expect(body.GR01).to.have.property('energy_in_total');",
+              "  pm.expect(body.GR01).to.have.property('energy_in_l1');",
+              "  pm.expect(body.GR01).to.have.property('energy_in_l2');",
+              "  pm.expect(body.GR01).to.have.property('energy_in_l3');",
+              "  pm.expect(body.GR01).to.have.property('energy_out_total');",
+              "  pm.expect(body.GR01).to.have.property('energy_out_l1');",
+              "  pm.expect(body.GR01).to.have.property('energy_out_l2');",
+              "  pm.expect(body.GR01).to.have.property('energy_out_l3');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grid Meter - Get Observation - Custom Window",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{gridAssetId}}/observations?window_seconds={{windowSeconds}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{gridAssetId}}",
+            "observations"
+          ],
+          "query": [
+            {
+              "key": "window_seconds",
+              "value": "{{windowSeconds}}"
+            }
+          ]
+        },
+        "description": "Get grid meter observation for a custom window in seconds."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "pm.test('energy_in_total is numeric', function () {",
+              "  pm.expect(body.GR01.energy_in_total).to.be.a('number');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grid Meter - Apply Action (Read-Only 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"power_kw\": 2.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{gridAssetId}}/actions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{gridAssetId}}",
+            "actions"
+          ]
+        },
+        "description": "Expect 400 because grid_meter does not support apply_action."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grid Meter - Reset (Read-Only 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soc_pct\": {{resetSocPct}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/assets/{{gridAssetId}}/reset",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "assets",
+            "{{gridAssetId}}",
+            "reset"
+          ]
+        },
+        "description": "Expect 400 because grid_meter does not support reset_soc."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -396,6 +564,11 @@
     {
       "key": "assetId",
       "value": "sao-mamede-battery",
+      "type": "string"
+    },
+    {
+      "key": "gridAssetId",
+      "value": "sao-mamede-grid-meter",
       "type": "string"
     },
     {

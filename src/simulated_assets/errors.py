@@ -21,3 +21,10 @@ class InvalidSocError(Exception):
         self.soc_pct = soc_pct
         self.soc_min_pct = soc_min_pct
         self.soc_max_pct = soc_max_pct
+
+
+class UnsupportedOperationError(Exception):
+    def __init__(self, asset_type: str, operation: str) -> None:
+        super().__init__(f"Operation '{operation}' is not supported for asset_type '{asset_type}'")
+        self.asset_type = asset_type
+        self.operation = operation
