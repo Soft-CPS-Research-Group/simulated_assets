@@ -568,7 +568,7 @@
     },
     {
       "key": "gridAssetId",
-      "value": "sao-mamede-grid-meter",
+      "value": "hq-grid-meter",
       "type": "string"
     },
     {

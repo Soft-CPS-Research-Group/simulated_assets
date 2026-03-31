@@ -16,7 +16,7 @@
       "max_observation_window_seconds": 86400
     },
     {
-      "asset_id": "sao-mamede-grid-meter",
+      "asset_id": "hq-grid-meter",
       "asset_type": "grid_meter",
       "default_observation_window_seconds": 5,
       "max_observation_window_seconds": 86400
